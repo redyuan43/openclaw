@@ -87,6 +87,14 @@ const wechatLinuxConfigAdapter = createScopedChannelConfigAdapter<
     "xauthority",
     "windowClass",
     "windowMode",
+    "dmPolicy",
+    "allowFrom",
+    "groupPolicy",
+    "groupAllowFrom",
+    "mentionPatterns",
+    "textChunkLimit",
+    "blockStreaming",
+    "mediaMaxMb",
     "imageAnalysis",
     "videoAnalysis",
     "voiceAsr",
@@ -259,7 +267,13 @@ export const wechatLinuxPlugin: ChannelPlugin<ResolvedWechatLinuxAccount, Bridge
       looksLikeId: looksLikeWechatLinuxTargetId,
       hint: "<wxid_*|*@chatroom|display name>",
       resolveTarget: async ({ cfg, accountId, input, normalized, preferredKind }) => {
-        const parsed = buildWechatLinuxOutboundTarget(normalized || input);
+        const normalizedTarget = normalized ? parseWechatLinuxMessagingTarget(normalized) : null;
+        const directTarget = looksLikeWechatLinuxTargetId(normalized || "")
+          ? normalized
+          : looksLikeWechatLinuxTargetId(input)
+            ? input
+            : undefined;
+        const parsed = directTarget ? buildWechatLinuxOutboundTarget(directTarget) : null;
         if (parsed) {
           return {
             to: parsed.to,
@@ -270,9 +284,13 @@ export const wechatLinuxPlugin: ChannelPlugin<ResolvedWechatLinuxAccount, Bridge
         const account = resolveWechatLinuxAccount({ cfg: cfg as CoreConfig, accountId });
         const resolved = await resolveWechatLinuxBridgeTarget({
           account,
-          input,
+          input: normalizedTarget?.id || input,
           kind:
-            preferredKind === "group" ? "group" : preferredKind === "user" ? "direct" : undefined,
+            preferredKind === "group"
+              ? "group"
+              : preferredKind === "user"
+                ? "direct"
+                : normalizedTarget?.chatType,
         });
         if (!resolved.ok || !resolved.chat_id || !resolved.chat_type) {
           return null;

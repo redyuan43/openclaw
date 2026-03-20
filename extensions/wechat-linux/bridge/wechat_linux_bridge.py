@@ -462,8 +462,12 @@ def normalize_bridge_message_from_parsed(
         if sender_id and sender_id != context["target_username"]:
             self_sender_ids.add(sender_id)
             is_self = True
-    elif sender_id in self_sender_ids:
-        is_self = True
+    elif sender_id:
+        # PyWxDump omits the "sender:\n" chatroom prefix on our own group messages.
+        if ":\n" not in decoded_content and sender_id != context["target_username"]:
+            self_sender_ids.add(sender_id)
+        if sender_id in self_sender_ids:
+            is_self = True
 
     return {
         "local_id": int(local_id),
